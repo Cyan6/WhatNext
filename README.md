@@ -1,4 +1,4 @@
 WhatNext
 ========
 
-A timer-based queue implimentation in Common Lisp.
+A relative-timing-based queue implimentation in Common Lisp.
