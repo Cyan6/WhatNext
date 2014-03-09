@@ -10,7 +10,9 @@
 (in-package :whatnext)
 
 (defclass tick-queue ()
-  ((items :initform nil
+  ((fifo :initform nil
+         :initarg :fifo)
+   (items :initform nil
           :initarg :items)))
 
 (defgeneric queue-reset (queue))
@@ -20,20 +22,23 @@
 (defgeneric queue-pop (queue))
 (defmethod queue-pop ((queue tick-queue))
   (with-slots (items) queue
-    (when items (let ((item (pop items)))
-                  (if items 
-                    (progn (incf (cadar items) (car item))
-                           (cddr item))
-                    (cddr item))))))
+    (when items 
+      (let ((item (pop items)))
+        (if items 
+          (progn (incf (cadar items) (car item))
+                 (cddr item))
+          (cddr item))))))
 
 (defgeneric queue-add (queue new ticks))
 (defmethod queue-add ((queue tick-queue) new (ticks number))
   (with-slots (items) queue
-    (if items
+    (if items 
       (labels ((walk (l)
-                 (setf (caar l) (- (caar l) (cadar l)))
-                 (setf (cadar l) 0)
-                 (cond ((< ticks (caar l))
+                 (when (not (= 0 (cadar l)))
+                   (when (cdr l) (setf (cadadr l) (cadar l)))
+                   (setf (caar l) (- (caar l) (cadar l)))
+                   (setf (cadar l) 0))
+                 (cond ((funcall (if (slot-value queue 'fifo) '< '<=) ticks (caar l))
                         (setf (cdr l) (cons (car l) (cdr l)))
                         (setf (car l) `(,ticks 0 . ,new)))
                        ((cdr l) (walk (cdr l)))
@@ -44,5 +49,4 @@
 
 (defgeneric queue-data (queue))
 (defmethod queue-data ((queue tick-queue))
-  (with-slots (items) queue
-    items))
+  (slot-value queue 'items))
